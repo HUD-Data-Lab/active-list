@@ -15,7 +15,8 @@
 library(shiny)
 library(shinydashboard)
 library(shinyWidgets)
-library(dashboardthemes)
+# library(dashboardthemes)
+library(bslib)
 library(tidyverse)
 library(lubridate)
 library(DT)
@@ -25,8 +26,11 @@ library(colourpicker)
 options(shiny.maxRequestSize = 30*1024^2)
 `%nin%` = Negate(`%in%`)
 
-hud_service_data <- read.csv("https://raw.githubusercontent.com/gwenbeebe/CHIP_HMIS/main/Publishing/NHSDC_ByNameList/SupplementalData_ServiceGroups.csv") %>%
-  left_join(read.csv("https://raw.githubusercontent.com/gwenbeebe/CHIP_HMIS/main/Publishing/NHSDC_ByNameList/SupplementalData_Services.csv"), 
+hud_service_data <- 
+  # read.csv("https://raw.githubusercontent.com/gwenbeebe/CHIP_HMIS/main/Publishing/NHSDC_ByNameList/SupplementalData_ServiceGroups.csv") %>%
+  # left_join(read.csv("https://raw.githubusercontent.com/gwenbeebe/CHIP_HMIS/main/Publishing/NHSDC_ByNameList/SupplementalData_Services.csv"), 
+  read.csv("C:/Users/57695/OneDrive - ICF/ICF Homeless Services Team/HCC/Code/active-list/SupplementalData_ServiceGroups.csv") %>%
+  left_join(read.csv("C:/Users/57695/OneDrive - ICF/ICF Homeless Services Team/HCC/Code/active-list/SupplementalData_Services.csv"),
             by = "RecordType") %>%
   dplyr::mutate(ServiceType = case_when(
     str_detect(Description, fixed("outreach", ignore_case=TRUE)) |
