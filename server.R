@@ -13,76 +13,194 @@
 
 server <- function(input, output, session) {
   
-  ##  load in all files
-  export_data <- reactive({
-    if(is.null(input$file)){return ()}
-    withProgress(
-      read_csv(unzip(input$file$datapath, "Export.csv"),
-               col_types = "cicccciiiTTTccciii"))
+  # ##  load in all files
+  # export_data <- reactive({
+  #   if(is.null(input$file)){return ()}
+  #   withProgress(
+  #     read_csv(unzip(input$file$datapath, "Export.csv"),
+  #              col_types = "cicccciiiTTTccciii"))
+  # })
+  # 
+  # start_date <- reactive({
+  #   if(is.null(input$file)){return ()}
+  #   as.Date(export_data()$ExportStartDate)
+  # })
+  # 
+  # end_date <- reactive({
+  #   if(is.null(input$file)){return ()}
+  #   as.Date(export_data()$ExportEndDate)
+  # })
+  # 
+  # project_data <- reactive({
+  #   if(is.null(input$file)){return ()}
+  #   read_csv(unzip(input$file$datapath, "Project.csv"),
+  #            col_types = "ccccDDnnnnnnnnnTTcTc") 
+  # })  
+  # 
+  # organization_data <- reactive({
+  #   if(is.null(input$file)){return ()}
+  #   read_csv(unzip(input$file$datapath, "Organization.csv"),
+  #            col_types = "ccncTTcTn")
+  # })
+  # 
+  # exit_data <- reactive({
+  #   if(is.null(input$file)){return ()}
+  #   read_csv(unzip(input$file$datapath, "Exit.csv"),
+  #            col_types = "cccDiciiiiiiiiiiiiiiiiiiiiiiiiiDiiiiiiTTcTc")
+  # })
+  # 
+  # dv_data <- reactive({
+  #   if(is.null(input$file)){return ()}
+  #   read_csv(unzip(input$file$datapath, "HealthAndDV.csv"),
+  #            col_types = "cccDiiiiiiiDiiiiiTTcTc") %>%
+  #     filter(CurrentlyFleeing == 1 &
+  #              DataCollectionStage == 1) %>%
+  #     select(EnrollmentID, CurrentlyFleeing) 
+  # })
+  # 
+  # enrollment_data <- reactive({
+  #   if(is.null(input$file)){return ()}
+  #   read_csv(unzip(input$file$datapath, "Enrollment.csv"),
+  #            col_types = "cccDciiiiiDiiiDDDiiiicccciiiDiiiiciiiiiiiiiiiiciiiiiiiiiiiiiiiiiiiiTTcTc")
+  # })
+  # 
+  # 
+  # 
+  # service_data <- reactive({
+  #   if(is.null(input$file)){return ()}
+  #   read_csv(unzip(input$file$datapath, "Services.csv"),
+  #            col_types = "cccDiicciciTTcTc")
+  # })
+  # 
+  # cls_data <- reactive({
+  #   if(is.null(input$file)){return ()}
+  #   read_csv(unzip(input$file$datapath, "CurrentLivingSituation.csv"),
+  #            col_types = "cccDiciiiiicTTcTc")
+  # })
+  # 
+  # client_data <- reactive({
+  #   if(is.null(input$file)){return ()}
+  #   read_csv(unzip(input$file$datapath, "Client.csv"),
+  #            col_types = "ccccciciDiiiiiiiiiiiiiciiiiiiiiiiiiiTTcTc") %>%
+  #     select(PersonalID, DOB, VeteranStatus, FirstName, LastName)
+  # })
+  
+  #########################
+  
+  valid_file <- reactiveVal(0)
+  # file_list <- reactiveValues()
+  # file_list$file <- list()
+  # rv <- reactiveValues()
+  
+  importFile <- function(csvFile, guess_max = 1000) {
+    filename = str_glue("{csvFile}.csv")
+    data <- read_csv(utils::unzip(zipfile = input$imported$datapath, files = filename)
+                     ,col_types = get_col_types(csvFile)
+                     ,na = ""
+    )
+    file.remove(filename)
+    return(data)
+  }
+  
+  observeEvent(input$timeOut, {
+    reset("imported")
+    session$reload()
   })
   
-  start_date <- reactive({
-    if(is.null(input$file)){return ()}
-    as.Date(export_data()$ExportStartDate)
-  })
-  
-  end_date <- reactive({
-    if(is.null(input$file)){return ()}
-    as.Date(export_data()$ExportEndDate)
-  })
-  
-  project_data <- reactive({
-    if(is.null(input$file)){return ()}
-    read_csv(unzip(input$file$datapath, "Project.csv"),
-             col_types = "ccccDDnnnnnnnnnTTcTc") 
-  })  
-  
-  organization_data <- reactive({
-    if(is.null(input$file)){return ()}
-    read_csv(unzip(input$file$datapath, "Organization.csv"),
-             col_types = "ccncTTcTn")
-  })
-  
-  exit_data <- reactive({
-    if(is.null(input$file)){return ()}
-    read_csv(unzip(input$file$datapath, "Exit.csv"),
-             col_types = "cccDiciiiiiiiiiiiiiiiiiiiiiiiiiDiiiiiiTTcTc")
-  })
-  
-  dv_data <- reactive({
-    if(is.null(input$file)){return ()}
-    read_csv(unzip(input$file$datapath, "HealthAndDV.csv"),
-             col_types = "cccDiiiiiiiDiiiiiTTcTc") %>%
-      filter(CurrentlyFleeing == 1 &
-               DataCollectionStage == 1) %>%
-      select(EnrollmentID, CurrentlyFleeing) 
-  })
-  
-  enrollment_data <- reactive({
-    if(is.null(input$file)){return ()}
-    read_csv(unzip(input$file$datapath, "Enrollment.csv"),
-             col_types = "cccDciiiiiDiiiDDDiiiicccciiiDiiiiciiiiiiiiiiiiciiiiiiiiiiiiiiiiiiiiTTcTc")
-  })
-  
-  
-  
-  service_data <- reactive({
-    if(is.null(input$file)){return ()}
-    read_csv(unzip(input$file$datapath, "Services.csv"),
-             col_types = "cccDiicciciTTcTc")
-  })
-  
-  cls_data <- reactive({
-    if(is.null(input$file)){return ()}
-    read_csv(unzip(input$file$datapath, "CurrentLivingSituation.csv"),
-             col_types = "cccDiciiiiicTTcTc")
-  })
-  
-  client_data <- reactive({
-    if(is.null(input$file)){return ()}
-    read_csv(unzip(input$file$datapath, "Client.csv"),
-             col_types = "ccccciciDiiiiiiiiiiiiiciiiiiiiiiiiiiTTcTc") %>%
-      select(PersonalID, DOB, VeteranStatus, FirstName, LastName)
+  csv_files <- reactive({
+    if (is.null(input$imported)) {
+      return ()
+    }
+    # observeEvent(input$imported, {
+    valid_file(0)
+    csv_files <- list()
+    source("https://raw.githubusercontent.com/HUD-Data-Lab/DataLab/main/local_initially_valid_import.R", 
+           local = TRUE)
+    # extract file names from their uploaded zip
+    if(tolower(tools::file_ext(input$imported$datapath)) != "zip") {
+      show_invalid_popup(127)
+      print("Unsuccessful upload - zip file not .zip")
+    } else {
+      
+      zipContents <- utils::unzip(zipfile = input$imported$datapath, list=TRUE)
+      
+      zipFiles <- zipContents$Name %>% str_replace(".csv", "")
+      
+      # expected files
+      expected_files <- unique(cols_and_data_types$File)
+      
+      # get missing files by comparing what we expect with what we got
+      missing_files <- expected_files[!(expected_files %in% zipFiles)]
+      
+      ### Now check whether the file is hashed, has the expected structure, and contains
+      # the expected csv files
+      if(grepl("/", zipContents$Name[1])) {
+        show_invalid_popup(122)
+        # logMetadata("Unsuccessful upload - zip file was misstructured")
+      } else if("Export" %in% missing_files) {
+        show_invalid_popup(123)
+        # logMetadata("Unsuccessful upload - not an HMIS CSV Export")
+      } else if(!isFY2024Export()) {
+        show_invalid_popup(124)
+        # logMetadata("Unsuccessful upload - out of date HMIS CSV Export")
+      } else if(length(missing_files)) {
+        evachecks <- evachecks %>% filter(ID == 125) %>% 
+          mutate(Guidance = HTML(str_glue(
+            "Your zip file appears to be missing the following files:<br/><br/>
+      
+        {paste(missing_files, collapse = ', ')}<br/><br/>
+        
+        You either uploaded something other than an HMIS CSV export or your export 
+        does not contain all the files outlined in the HMIS CSV Export specifications.
+        If you are not sure how to run the hashed HMIS CSV Export in your HMIS,
+        please contact your HMIS vendor."))
+          )
+        show_invalid_popup(125)
+        # logMetadata("Unsuccessful upload - incomplete dataset")
+      } else if(!is_hashed()) {
+        show_invalid_popup(126)
+        # logMetadata("Unsuccessful upload - not hashed")
+      } 
+    }
+    
+    if(initially_valid_import == 1) {
+      
+      withProgress({
+        setProgress(message = "Processing...", value = .15)
+        setProgress(detail = "Reading your files..", value = .2)})
+      
+      for (file in unique(cols_and_data_types$File)) {
+        # print(file)
+        #import the csv and save it as a data frame
+        assign(file, importFile(file))
+        # csv_files <- c(csv_files, list(get(file)))
+      }
+    }
+    default_report_start_date <- Export %>% pull(ExportStartDate)
+    default_report_end_date <- Export %>% pull(ExportEndDate)
+    
+    # rv$Enrollment <- Enrollment
+    # valid_file(1)
+    # choices <<- Organization$OrganizationName
+    # list(Organization = Organization, Client = Client)
+    # file_list$file$Organization <- Organization
+    list(Client = Client, 
+         CurrentLivingSituation = CurrentLivingSituation,
+         Enrollment = Enrollment,
+         Event = Event,
+         Exit = Exit,
+         Funder = Funder,
+         Organization = Organization,
+         Project = Project,
+         Services = Services,
+         IncomeBenefits = IncomeBenefits,
+         Disabilities = Disabilities,
+         HealthAndDV = HealthAndDV,
+         default_report_start_date = default_report_start_date,
+         default_report_end_date = default_report_end_date)
+    # Organization
+    # names(csv_files) <- unique(cols_and_data_types$File)
+    # csv_files
   })
   
   #########################

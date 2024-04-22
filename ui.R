@@ -46,10 +46,10 @@ shinyUI(
         )
       )),
     dashboardBody(
-      shinyDashboardThemes(
-        theme = "poor_mans_flatly"
-        # theme = "grey_light"
-      ),
+      # shinyDashboardThemes(
+      #   theme = "poor_mans_flatly"
+      #   # theme = "grey_light"
+      # ),
       tags$style(
         type = 'text/css',
         '.modal-dialog { width: fit-content !important; }'
@@ -61,7 +61,7 @@ shinyUI(
             titlePanel("HUD CSV Import"),
             fluidRow(
               box(solidHeader = TRUE, title = "Import File Here",
-                  fileInput("file", " ", accept = ".zip"), 
+                  fileInput("imported", " ", accept = ".zip"), 
                   width = 12, status = "primary")))),
         tabItem(
           tabName = "settings",

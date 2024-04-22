@@ -1,4 +1,4 @@
-# Copyright (C) 2022 Gwen Beebe
+# Copyright (C) 2023 ICF
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -11,20 +11,21 @@
 # GNU Affero General Public License for more details at
 # <https://www.gnu.org/licenses/>. 
 
-
+# library(colourpicker)
+library(shinyjs)
+library(stringr)
+library(janitor)
 library(shiny)
-library(shinydashboard)
-library(shinyWidgets)
-# library(dashboardthemes)
 library(bslib)
-library(tidyverse)
-library(lubridate)
+# library(thematic)
 library(DT)
-library(shinydashboardPlus)
-library(colourpicker)
+library(zip)
+# library(archive)
+library(tidyverse)
+library(shinydashboard)
+# library(bsicons)
 
 options(shiny.maxRequestSize = 30*1024^2)
-`%nin%` = Negate(`%in%`)
 
 source("https://raw.githubusercontent.com/HUD-Data-Lab/DataLab/main/datalab_functions.R")
 source("https://raw.githubusercontent.com/HUD-Data-Lab/DataLab/main/DataLab_Lists.R")
@@ -65,25 +66,31 @@ names_for_1.8 <- c("Yes", "No", "Client doesn't know",
                    "Client prefers not to answer", "Data not collected")
 values_for_1.8 <- c(1, 0, 8, 9, 99)
 
-hud_service_data <- 
-  # read.csv("https://raw.githubusercontent.com/gwenbeebe/CHIP_HMIS/main/Publishing/NHSDC_ByNameList/SupplementalData_ServiceGroups.csv") %>%
-  # left_join(read.csv("https://raw.githubusercontent.com/gwenbeebe/CHIP_HMIS/main/Publishing/NHSDC_ByNameList/SupplementalData_Services.csv"), 
-  read.csv("C:/Users/57695/OneDrive - ICF/ICF Homeless Services Team/HCC/Code/active-list/SupplementalData_ServiceGroups.csv") %>%
-  left_join(read.csv("C:/Users/57695/OneDrive - ICF/ICF Homeless Services Team/HCC/Code/active-list/SupplementalData_Services.csv"),
-            by = "RecordType") %>%
-  dplyr::mutate(ServiceType = case_when(
-    str_detect(Description, fixed("outreach", ignore_case=TRUE)) |
-      Description == "Bed night" ~ "Homeless",
-    str_detect(Description, fixed("rental", ignore_case=TRUE)) |
-      str_detect(Description, fixed("eviction prevention", ignore_case=TRUE)) |
-      str_detect(Description, fixed("security deposit", ignore_case=TRUE))~ "Housed"
-  ))
+PATH_questions <- c("Q8_16", "Q17", "Q18", "Q19_24", "Q25", "Q26")
 
-##  variable assignment
-{
-  homeless_situations <- c(1, 2, 16, 18)
-  housed_situations <- c(3, 10, 11, 14, 19, 20, 21, 22, 23, 26, 28, 29, 31, 32, 33, 34, 35, 36)
-  homeless_program_types <- c(1, 2, 4, 8)
-  housing_program_types <- c(3, 9, 10, 55, 13)
-  file_count <- 9 
-  }
+# ICF_theme <- bslib::bs_theme(
+#   bg = "#ffffff", fg = "#000000", primary = "#0785F2",
+#   secondary = "#031D40", success = "#30F298", info = "#5BCBF5",
+#   warning = "#FFC628", danger = "#414042", base_font = font_google("DM Sans"),
+#   code_font = font_google("DM Mono"), heading_font = "DM Sans Black",
+#   `enable-shadows` = TRUE
+#   , preset = "spacelab"
+# )
+
+ICF_TitlePanel <- function (title, windowTitle = title, color = "#031D40") {
+  css <- paste(paste0("background-color:", color),
+               "color: white",
+               # "margin-left: 15px",
+               "margin-top: -15px",
+               "margin-left: -30px",
+               "margin-right: -12px",
+               "border-radius: 25px",
+               "padding-top: 17px",
+               "padding-left: 25px",
+               "padding-bottom: 5px",
+               sep = ";")
+  tagList(tags$head(tags$title(windowTitle)), 
+          h1(title, style = css))
+}
+
+
