@@ -129,7 +129,133 @@ function(input, output, session) {
     # names(csv_files) <- unique(cols_and_data_types$File)
     # csv_files
   })
+  ##########################
   
+  joined_enrollments <- reactive({
+    if(is.null(input$imported)){return ()}
+    csv_files()$Enrollment %>%
+      select(EnrollmentID, PersonalID, EntryDate, HouseholdID, RelationshipToHoH, ProjectID,
+             LivingSituation, DateToStreetESSH, DisablingCondition, TimesHomelessPastThreeYears,
+             MonthsHomelessPastThreeYears, MoveInDate) %>%
+      left_join(csv_files()$Project %>%
+                  select(ProjectID, ProjectType, ProjectName, OrganizationID), by = "ProjectID") %>%
+      left_join(csv_files()$Organization %>%
+                  select(OrganizationID, OrganizationName), by = "OrganizationID") %>%
+      left_join(csv_files()$Exit %>%
+                  select(EnrollmentID, ExitDate, Destination), by = "EnrollmentID") %>%
+      left_join(csv_files()$HealthAndDV %>%
+                  filter(DataCollectionStage == 1) %>%
+                  select(EnrollmentID, CurrentlyFleeing), by = "EnrollmentID") %>%
+      dplyr::mutate(EntryDate = ymd(EntryDate),
+                    MoveInDate = ymd(MoveInDate),
+                    ExitDate = ymd(ExitDate),
+                    LivingSituation = floor(LivingSituation / 100))
+  })
+  
+  client_information <- reactive({
+    if(is.null(input$imported)){return ()}
+    base_client_data <- csv_files()$Client %>%
+      # mutate(Name = paste(str_to_title(FirstName), str_to_title(LastName))) %>%
+      # select(-c(FirstName, LastName, DOB, VeteranStatus)) %>%
+      select(PersonalID) %>%
+      left_join(joined_enrollments() %>%
+                  filter(is.na(ExitDate)) %>%
+                  group_by(PersonalID) %>%
+                  summarise(ActiveEnrollments = paste(unique(ProjectName), collapse=", "),
+                            InHousingProgram = max(if_else(ProjectType %in% housing_program_types, 1, 0),  na.rm = TRUE),
+                            Sheltered = max(if_else(ProjectType %in% c(0, 1, 2, 8), 1, 0),  na.rm = TRUE),
+                            InCES = max(if_else(ProjectType == 14, 1, 0),  na.rm = TRUE)),
+                by = "PersonalID")
+    
+    # if(is.null(input$additional_client_info)){
+      return (base_client_data)
+    #   }
+    # else {return(base_client_data %>%
+    #                left_join(read_csv(input$additional_client_info$datapath) %>%
+    #                            distinct(PersonalID, .keep_all = TRUE) %>%
+    #                            mutate(PersonalID = as.character(PersonalID)),
+    #                          by = "PersonalID"))}
+  })
+  
+  ########################
+  
+  ##  run event calculations
+  
+  ##  current living situation events
+  cls_events <- reactive({
+    if(is.null(input$imported)){return ()}
+    csv_files()$CurrentLivingSituation %>%
+      mutate(CurrentLivingSituation = floor(CurrentLivingSituation / 100)) %>%
+      filter(CurrentLivingSituation %in% c(1, 4)) %>%
+      left_join(joined_enrollments() %>%
+                  select(EnrollmentID, ProjectName), by = "EnrollmentID") %>%
+      dplyr::mutate(
+        ClientStatus = case_when(
+          CurrentLivingSituation == 1 ~ "Homeless",
+          CurrentLivingSituation == 4 ~ "Housed"),
+        EventType = case_when(
+          CurrentLivingSituation == 1 ~ "Literally Homeless CLS",
+          CurrentLivingSituation == 4 ~ "Housed CLS"),
+        InformationSource = if_else(is.na(VerifiedBy), ProjectName, VerifiedBy)) %>%
+      rename(EffectiveDate = InformationDate) %>%
+      select(PersonalID, EffectiveDate, ClientStatus, EventType, InformationSource)
+  })
+  
+  ##  homeless enrollment events
+  homeless_enrollment_events <- reactive({
+    if(is.null(input$imported)){return ()}
+    joined_enrollments() %>%
+      filter(LivingSituation == 1 |
+               CurrentlyFleeing == 1 |
+               ProjectType %in% homeless_program_types) %>%
+      dplyr::mutate(ClientStatus = "Homeless",
+                    EventType = "Literally Homeless Enrollment") %>%
+      rename(EffectiveDate = EntryDate,
+             InformationSource = ProjectName) %>%
+      select(PersonalID, EffectiveDate, ClientStatus, EventType, InformationSource)
+  })
+  
+  ##  housing move-in date events
+  move_in_date_events <- reactive({
+    if(is.null(input$imported)){return ()}
+    joined_enrollments() %>%
+      filter(MoveInDate >= csv_files()$default_report_start_date &
+               MoveInDate <= csv_files()$default_report_end_date &
+               ProjectType %in% housing_program_types) %>%
+      dplyr::mutate(ClientStatus = "Housed",
+                    EventType = "Housing Move-In Date") %>%
+      rename(EffectiveDate = MoveInDate,
+             InformationSource = ProjectName) %>%
+      select(PersonalID, EffectiveDate, ClientStatus, EventType, InformationSource)
+  })
+  
+  ##  service events
+  service_events <- reactive({
+    if(is.null(input$imported)){return ()}
+    service_list %>%
+      left_join(csv_files()$Services %>%
+                  mutate(RecordType = as.character(RecordType))
+      #             select(PersonalID, EnrollmentID, DateProvided, RecordType, TypeProvided) %>%
+      #             filter(DateProvided >= csv_files()$default_report_start_date), 
+                ,by = c("RecordType", "TypeProvided")) #%>%
+      # left_join(joined_enrollments() %>%
+      #             select(EnrollmentID, ProjectName, ProjectType), by = "EnrollmentID") %>%
+      # filter(!is.na(ServiceType) | 
+      #          ProjectType %in% homeless_program_types) %>%
+      # dplyr::mutate(
+      #   EventType = case_when(
+      #     ServiceType == "Housed" ~ "Rent or Deposit Service",
+      #     ServiceType == "Homeless" ~ "Outreach Contact Service",
+      #     TRUE ~ "Service From Homeless-Only Program"),
+      #   ClientStatus = if_else(is.na(ServiceType), "Homeless", ServiceType)) %>%
+      # rename(EffectiveDate = DateProvided,
+      #        InformationSource = ProjectName)%>%
+      # select(PersonalID, EffectiveDate, ClientStatus, EventType, InformationSource)
+  })
+  
+  ##########################
+  # PATH report
+  {
   output$org_selector <- renderUI({
     if (is.null(input$imported)) {
       return ()
@@ -1114,25 +1240,15 @@ function(input, output, session) {
       select(ProjectName, `SO or SSO Project`, `Has PATH Fund Source`,
              `People With Activity`, `Included Project`)
   })
-  
+}
   
   output$debug_table <- DT::renderDataTable({
     if (is.null(input$imported)) {
       return ()
     }
-    req(input$preview_selector)
-    if (input$preview_selector == "Q8_16") {df <- Q8_16()}
-    else if (input$preview_selector == "Q17") {df <- Q17()}
-    else if (input$preview_selector == "Q18") {df <- Q18()}
-    else if (input$preview_selector == "Q19_24") {df <- Q19_24()}
-    else if (input$preview_selector == "Q25") {df <- Q25()}
-    else if (input$preview_selector == "Q26") {df <- Q26()}
-    else if (input$preview_selector == "Included Projects") {df <- included_projects()}
     
     datatable(
-      # csv_files()$Organization,
-      # run_questions(),
-      df,
+      head(service_events()),
       rownames = FALSE,
       options = list(dom = 't',
                      "pageLength" = -1)

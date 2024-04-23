@@ -11,6 +11,9 @@
 # GNU Affero General Public License for more details at
 # <https://www.gnu.org/licenses/>. 
 
+library(openxlsx)
+library(lubridate)
+library(bsicons)
 # library(colourpicker)
 library(shinyjs)
 library(stringr)
@@ -23,7 +26,6 @@ library(zip)
 # library(archive)
 library(tidyverse)
 library(shinydashboard)
-# library(bsicons)
 
 options(shiny.maxRequestSize = 30*1024^2)
 
@@ -91,6 +93,26 @@ ICF_TitlePanel <- function (title, windowTitle = title, color = "#031D40") {
                sep = ";")
   tagList(tags$head(tags$title(windowTitle)), 
           h1(title, style = css))
+}
+
+##  variable assignment
+{
+  homeless_situations <- c(1, 2, 16, 18)
+  housed_situations <- c(3, 10, 11, 14, 19, 20, 21, 22, 23, 26, 28, 29, 31, 32, 33, 34, 35, 36)
+  homeless_program_types <- c(0, 1, 2, 4, 8)
+  housing_program_types <- c(3, 9, 10, 55, 13)
+  file_count <- 9 
+  service_list <- data.frame(
+    RecordType = c("141", "142", "143", "144", "151", "152", "161", "200", 
+                   "210", "300"),
+    List = c("P1.2", "R14.2", "W1.2", "V2.2", "W2.2", "V3.3", "P2.2", "4.14",
+             "V8.2", "C2.2")) %>%
+    left_join(read.xlsx("https://github.com/HUD-Data-Lab/DataLab/raw/main/CSV%20Specifications%20Machine-Readable_FY2024.xlsx", 
+                        sheet = "CSV Lists FY2024"), 
+              by = "List") %>%
+    mutate(Text = if_else(RecordType == 200, "Bed night", Text),
+           Value = if_else(RecordType == 200, RecordType, Value)) %>%
+    rename(TypeProvided = Value)
 }
 
 
