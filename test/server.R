@@ -137,7 +137,9 @@ function(input, output, session) {
   
   joined_enrollments <- reactive({
     if(is.null(input$imported)){return ()}
-    notify("Getting enrollment data...")
+    id <- notify("Reading enrollment data...")
+    on.exit(removeNotification(id), add = TRUE)
+    
     csv_files()$Enrollment %>%
       select(EnrollmentID, PersonalID, EntryDate, HouseholdID, RelationshipToHoH, ProjectID,
              LivingSituation, DateToStreetESSH, DisablingCondition, TimesHomelessPastThreeYears,
@@ -159,6 +161,9 @@ function(input, output, session) {
   
   client_information <- reactive({
     if(is.null(input$imported)){return ()}
+    id <- notify("Reading client data...")
+    on.exit(removeNotification(id), add = TRUE)
+    
     base_client_data <- csv_files()$Client %>%
       # mutate(Name = paste(str_to_title(FirstName), str_to_title(LastName))) %>%
       # select(-c(FirstName, LastName, DOB, VeteranStatus)) %>%
@@ -189,6 +194,9 @@ function(input, output, session) {
   ##  current living situation events
   cls_events <- reactive({
     if(is.null(input$imported)){return ()}
+    id <- notify("Reading current living situation data...")
+    on.exit(removeNotification(id), add = TRUE)
+    
     csv_files()$CurrentLivingSituation %>%
       mutate(CurrentLivingSituation = floor(CurrentLivingSituation / 100)) %>%
       filter(CurrentLivingSituation %in% c(1, 4)) %>%
@@ -209,6 +217,9 @@ function(input, output, session) {
   ##  homeless enrollment events
   homeless_enrollment_events <- reactive({
     if(is.null(input$imported)){return ()}
+    id <- notify("Identifying homeless enrollments...")
+    on.exit(removeNotification(id), add = TRUE)
+    
     joined_enrollments() %>%
       filter(LivingSituation == 1 |
                CurrentlyFleeing == 1 |
@@ -223,6 +234,9 @@ function(input, output, session) {
   ##  housing move-in date events
   move_in_date_events <- reactive({
     if(is.null(input$imported)){return ()}
+    id <- notify("Finding housing move-in dates...")
+    on.exit(removeNotification(id), add = TRUE)
+    
     joined_enrollments() %>%
       filter(MoveInDate >= csv_files()$default_report_start_date &
                MoveInDate <= csv_files()$default_report_end_date &
@@ -237,6 +251,9 @@ function(input, output, session) {
   ##  service events
   service_events <- reactive({
     if(is.null(input$imported)){return ()}
+    id <- notify("Reading service data...")
+    on.exit(removeNotification(id), add = TRUE)
+    
     service_list %>%
       inner_join(csv_files()$Services %>%
                    mutate(RecordType = as.character(RecordType),
@@ -262,6 +279,9 @@ function(input, output, session) {
   ##  exits/residence events
   other_enrollment_events <- reactive({
     if(is.null(input$imported)){return ()}
+    id <- notify("Checking for open enrollments...")
+    on.exit(removeNotification(id), add = TRUE)
+    
     joined_enrollments() %>%
       filter(
         (is.na(ExitDate) &
@@ -284,6 +304,9 @@ function(input, output, session) {
   
   all_events <- reactive({
     if(is.null(input$imported)){return ()}
+    id <- notify("Combining everything we know...")
+    on.exit(removeNotification(id), add = TRUE)
+    
     cls_events() %>%
       union(homeless_enrollment_events()) %>%
       union(move_in_date_events()) %>%
@@ -298,6 +321,9 @@ function(input, output, session) {
   
   client_statuses <- reactive({
     if(is.null(input$imported)){return ()}
+    id <- notify("Determining statuses for every person...")
+    on.exit(removeNotification(id), add = TRUE)
+    
     all_events() %>%
       select(PersonalID, EffectiveDate, ClientStatus, before_inactive_date) %>%
       group_by(PersonalID) %>%
