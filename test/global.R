@@ -112,7 +112,14 @@ ICF_TitlePanel <- function (title, windowTitle = title, color = "#031D40") {
               by = "List") %>%
     mutate(Text = if_else(RecordType == 200, "Bed night", Text),
            Value = if_else(RecordType == 200, RecordType, Value)) %>%
-    rename(TypeProvided = Value)
+    rename(TypeProvided = Value) %>%
+    dplyr::mutate(ServiceType = case_when(
+      str_detect(Text, fixed("outreach", ignore_case=TRUE)) |
+        Text == "Bed night" ~ "Homeless",
+      str_detect(Text, fixed("rental", ignore_case=TRUE)) |
+        str_detect(Text, fixed("eviction prevention", ignore_case=TRUE)) |
+        str_detect(Text, fixed("security deposit", ignore_case=TRUE))~ "Housed"
+    ))
 }
 
 
