@@ -137,8 +137,6 @@ function(input, output, session) {
   
   joined_enrollments <- reactive({
     if(is.null(input$imported)){return ()}
-    id <- notify("Reading enrollment data...")
-    on.exit(removeNotification(id), add = TRUE)
     
     csv_files()$Enrollment %>%
       select(EnrollmentID, PersonalID, EntryDate, HouseholdID, RelationshipToHoH, ProjectID,
@@ -161,8 +159,6 @@ function(input, output, session) {
   
   client_information <- reactive({
     if(is.null(input$imported)){return ()}
-    id <- notify("Reading client data...")
-    on.exit(removeNotification(id), add = TRUE)
     
     base_client_data <- csv_files()$Client %>%
       # mutate(Name = paste(str_to_title(FirstName), str_to_title(LastName))) %>%
@@ -194,8 +190,6 @@ function(input, output, session) {
   ##  current living situation events
   cls_events <- reactive({
     if(is.null(input$imported)){return ()}
-    id <- notify("Reading current living situation data...")
-    on.exit(removeNotification(id), add = TRUE)
     
     csv_files()$CurrentLivingSituation %>%
       mutate(CurrentLivingSituation = floor(CurrentLivingSituation / 100)) %>%
@@ -217,8 +211,6 @@ function(input, output, session) {
   ##  homeless enrollment events
   homeless_enrollment_events <- reactive({
     if(is.null(input$imported)){return ()}
-    id <- notify("Identifying homeless enrollments...")
-    on.exit(removeNotification(id), add = TRUE)
     
     joined_enrollments() %>%
       filter(LivingSituation == 1 |
@@ -234,8 +226,6 @@ function(input, output, session) {
   ##  housing move-in date events
   move_in_date_events <- reactive({
     if(is.null(input$imported)){return ()}
-    id <- notify("Finding housing move-in dates...")
-    on.exit(removeNotification(id), add = TRUE)
     
     joined_enrollments() %>%
       filter(MoveInDate >= csv_files()$default_report_start_date &
@@ -251,8 +241,6 @@ function(input, output, session) {
   ##  service events
   service_events <- reactive({
     if(is.null(input$imported)){return ()}
-    id <- notify("Reading service data...")
-    on.exit(removeNotification(id), add = TRUE)
     
     service_list %>%
       inner_join(csv_files()$Services %>%
@@ -279,8 +267,6 @@ function(input, output, session) {
   ##  exits/residence events
   other_enrollment_events <- reactive({
     if(is.null(input$imported)){return ()}
-    id <- notify("Checking for open enrollments...")
-    on.exit(removeNotification(id), add = TRUE)
     
     joined_enrollments() %>%
       filter(
@@ -304,7 +290,7 @@ function(input, output, session) {
   
   all_events <- reactive({
     if(is.null(input$imported)){return ()}
-    id <- notify("Combining everything we know...")
+    id <- notify("Combining everything you uploaded...")
     on.exit(removeNotification(id), add = TRUE)
     
     cls_events() %>%
@@ -365,6 +351,149 @@ function(input, output, session) {
                CurrentStatus, IdentificationDate,
                setdiff(colnames(client_information()), "PersonalID")))
   }) 
+  
+  recent_enrollments <- reactive({
+    if(is.null(input$imported)){return ()}
+    csv_files()$Enrollment %>%
+      arrange(desc(EntryDate)) %>%
+      group_by(PersonalID) %>%
+      slice(1:3) %>%
+      ungroup() 
+  })
+  
+  chronic_folks <- reactive({
+    if(is.null(input$imported)){return ()}
+    id <- notify("Finding chronic folx...")
+    on.exit(removeNotification(id), add = TRUE)
+    
+    recent_enrollments() %>%
+      inner_join(csv_files()$Client %>%
+                   filter(DOB <= csv_files()$default_report_end_date - years(18)) %>%
+                   select(PersonalID), by = "PersonalID") %>%
+      filter(DisablingCondition == 1) %>%
+      dplyr::mutate(SinglyChronic =
+                      if_else(((ymd(DateToStreetESSH) + days(365) <= ymd(EntryDate) &
+                                  !is.na(DateToStreetESSH)) |
+                                 (
+                                   MonthsHomelessPastThreeYears %in% c(112, 113) &
+                                     TimesHomelessPastThreeYears == 4 &
+                                     !is.na(MonthsHomelessPastThreeYears) &
+                                     !is.na(TimesHomelessPastThreeYears)
+                                 )
+                      ), 1, 0)) %>%
+      select(PersonalID, SinglyChronic) %>%
+      group_by(PersonalID) %>%
+      summarise(SinglyChronic = max(SinglyChronic)) %>%
+      filter(SinglyChronic == 1)
+  })
+  
+  youth <- reactive({
+    if(is.null(input$imported)){return ()}
+    id <- notify("Finding youth...")
+    on.exit(removeNotification(id), add = TRUE)
+    
+    recent_enrollments() %>%
+      inner_join(csv_files()$Client %>%
+                   filter(DOB <= csv_files()$default_report_end_date - years(18) &
+                            DOB > csv_files()$default_report_end_date - years(25)) %>%
+                   select(PersonalID), by = "PersonalID") %>%
+      filter(RelationshipToHoH %in% c(1, 3)) %>%
+      dplyr::mutate(YouthFlag = 1) %>%
+      select(PersonalID, YouthFlag) %>%
+      group_by(PersonalID) %>%
+      slice(1L) %>%
+      ungroup()
+  })
+  
+  family_sizes <- reactive({
+    if(is.null(input$imported)){return ()}
+    id <- notify("Calculating family sizes...")
+    on.exit(removeNotification(id), add = TRUE)
+    
+    csv_files()$Enrollment %>%
+      inner_join(csv_files()$Enrollment %>%
+                   distinct(PersonalID, HouseholdID, .keep_all = TRUE) %>%
+                   inner_join(csv_files()$Client %>%
+                                filter(DOB > csv_files()$default_report_end_date - years(18)) %>%
+                                select(PersonalID), by = "PersonalID") %>%
+                   group_by(HouseholdID) %>%
+                   summarise(NumberOfChildren = n()) %>%
+                   filter(NumberOfChildren > 0),
+                 by = "HouseholdID") %>%
+      distinct(PersonalID, HouseholdID, .keep_all = TRUE) %>%
+      group_by(HouseholdID, NumberOfChildren) %>% 
+      summarise(HouseholdSize = n()) %>%
+      filter(NumberOfChildren < HouseholdSize)
+  })
+  
+  families <- reactive({
+    if(is.null(input$imported)){return ()}
+    recent_enrollments() %>%
+      inner_join(family_sizes(), by = "HouseholdID") %>%
+      filter(RelationshipToHoH == 1) %>%
+      arrange(desc(EntryDate)) %>%
+      select(PersonalID, NumberOfChildren, HouseholdSize) %>%
+      group_by(PersonalID) %>%
+      slice(1L) %>%
+      ungroup()
+  })
+  
+  #########################
+  output$effective_date_v <- renderUI({
+    h4(
+      if(is.null(input$imported)){"No data uploaded"}
+      else{
+        paste(
+          "Effective", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
+        )})
+  })
+  
+  vet_statuses <- reactive({
+    if(is.null(input$imported)){return ()}
+    client_statuses() %>%
+      inner_join(csv_files()$Client %>%
+                   filter(VeteranStatus == 1) %>%
+                   select(PersonalID), by = "PersonalID") %>%
+      mutate(PersonalID = as.integer(PersonalID),
+             IdentificationDate = ymd(IdentificationDate)) %>%
+      arrange(PersonalID) 
+  })
+  
+  output$VBNL_active <- renderValueBox({
+    valueBox(paste(
+      if(is.null(input$imported)){"---"}
+      else{nrow(vet_statuses() %>%
+                  filter(CurrentStatus == "Active"))}, 
+      "Veterans"),  
+      "are actively homeless", icon = icon("campground"),
+      color = "olive")})
+  
+  output$VBNL_newly <- renderValueBox({
+    valueBox(paste(
+      if(is.null(input$imported)){"---"}
+      else{nrow(vet_statuses() %>%
+                  filter(CurrentStatus == "New to List"))}, 
+      "Veterans"),  
+      "are newly homeless", icon = icon("car-side"),
+      color = "olive")})
+  
+  output$VBNL_return_h <- renderValueBox({
+    valueBox(paste(
+      if(is.null(input$imported)){"---"}
+      else{nrow(vet_statuses() %>%
+                  filter(CurrentStatus == "Return From Housed"))}, 
+      "Veterans"),  
+      "have returned from housing", icon = icon("house-damage"),
+      color = "olive")})
+  
+  output$VBNL_return_i <- renderValueBox({
+    valueBox(paste(
+      if(is.null(input$imported)){"---"}
+      else{nrow(vet_statuses() %>%
+                  filter(CurrentStatus == "Return From Inactive"))}, 
+      "Veterans"),  
+      "have returned from inactive", icon = icon("undo"),
+      color = "olive")})
   
   ##########################
   # PATH report
@@ -1361,7 +1490,7 @@ function(input, output, session) {
     }
     
     datatable(
-      head(client_statuses()),
+      head(csv_files()$Disabilities),
       rownames = FALSE,
       options = list(dom = 't',
                      "pageLength" = -1)

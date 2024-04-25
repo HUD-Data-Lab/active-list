@@ -187,7 +187,14 @@ ui <-
               navset_card_tab(
                 full_screen = TRUE,
                 nav_panel(
-                  card_title(div(icon("flag-usa"), " Veteran BNL"))
+                  card_title(div(icon("flag-usa"), " Veteran BNL")),
+                  card(htmlOutput("effective_date_v")),
+                  layout_column_wrap(
+                    width = 1/2, height = 300,
+                    infoBoxOutput("VBNL_active"),
+                    infoBoxOutput("VBNL_newly"),
+                    infoBoxOutput("VBNL_return_h"),
+                    infoBoxOutput("VBNL_return_i"))
                 ),
                 nav_panel(
                   card_title(div(icon("hourglass"), " Chronic BNL"))
