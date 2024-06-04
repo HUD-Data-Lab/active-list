@@ -14,6 +14,50 @@
 
 function(input, output, session) {
   
+  get_statuses <- function(event_list) {
+    
+    event_list %>%
+      select(PersonalID, EffectiveDate, ClientStatus, before_inactive_date) %>%
+      group_by(PersonalID) %>%
+      dplyr::mutate(PriorDate = dplyr::lead(EffectiveDate),
+                    PriorStatus = dplyr::lead(ClientStatus),
+                    HomelessPrior90 = ClientStatus == "Homeless" &
+                      PriorStatus == "Homeless" &
+                      EffectiveDate - ddays(input$days_to_inactive) <= PriorDate &
+                      !is.na(PriorStatus),
+                    IdentificationDate = suppressWarnings(max(case_when(
+                      ClientStatus == "Homeless" &
+                        !HomelessPrior90 ~ EffectiveDate), na.rm = TRUE)),
+                    HomelessEventInPeriod = suppressWarnings(max(
+                      ClientStatus == "Homeless" &
+                        before_inactive_date == 0, na.rm = TRUE)),
+                    HomelessEventBeforePeriod = suppressWarnings(max(
+                      ClientStatus == "Homeless" &
+                        before_inactive_date == 1, na.rm = TRUE)),
+                    HousedBefore = suppressWarnings(max(
+                      ClientStatus == "Homeless" &
+                        PriorStatus == "Housed" &
+                        before_inactive_date == 0, na.rm = TRUE))) %>%
+      slice(1L) %>%
+      ungroup() %>%
+      mutate(CurrentStatus = case_when(
+        ClientStatus == "Housed" ~ "Housed",
+        HomelessEventInPeriod &
+          !HomelessEventBeforePeriod ~ "New to List",
+        !HomelessEventInPeriod ~ "Inactive",
+        HousedBefore == 1 ~ "Return From Housed",
+        IdentificationDate >= csv_files()$default_report_end_date - ddays(input$days_to_inactive) ~ "Return From Inactive",
+        TRUE ~ "Active"
+      )) %>%
+      filter(CurrentStatus %nin% c("Housed", "Inactive")) %>%
+      select(PersonalID, CurrentStatus, IdentificationDate) %>%
+      left_join(client_information(),
+                by = "PersonalID") %>%
+      select(c(PersonalID, InHousingProgram, Sheltered, InCES,
+               CurrentStatus, IdentificationDate,
+               setdiff(colnames(client_information()), "PersonalID")))
+  }
+  
   valid_file <- reactiveVal(0)
   # file_list <- reactiveValues()
   # file_list$file <- list()
@@ -310,46 +354,7 @@ function(input, output, session) {
     id <- notify("Determining statuses for every person...")
     on.exit(removeNotification(id), add = TRUE)
     
-    all_events() %>%
-      select(PersonalID, EffectiveDate, ClientStatus, before_inactive_date) %>%
-      group_by(PersonalID) %>%
-      dplyr::mutate(PriorDate = dplyr::lead(EffectiveDate),
-                    PriorStatus = dplyr::lead(ClientStatus),
-                    HomelessPrior90 = ClientStatus == "Homeless" &
-                      PriorStatus == "Homeless" &
-                      EffectiveDate - ddays(input$days_to_inactive) <= PriorDate &
-                      !is.na(PriorStatus),
-                    IdentificationDate = suppressWarnings(max(case_when(
-                      ClientStatus == "Homeless" &
-                        !HomelessPrior90 ~ EffectiveDate), na.rm = TRUE)),
-                    HomelessEventInPeriod = suppressWarnings(max(
-                      ClientStatus == "Homeless" &
-                        before_inactive_date == 0, na.rm = TRUE)),
-                    HomelessEventBeforePeriod = suppressWarnings(max(
-                      ClientStatus == "Homeless" &
-                        before_inactive_date == 1, na.rm = TRUE)),
-                    HousedBefore = suppressWarnings(max(
-                      ClientStatus == "Homeless" &
-                        PriorStatus == "Housed" &
-                        before_inactive_date == 0, na.rm = TRUE))) %>%
-      slice(1L) %>%
-      ungroup() %>%
-      mutate(CurrentStatus = case_when(
-        ClientStatus == "Housed" ~ "Housed",
-        HomelessEventInPeriod &
-          !HomelessEventBeforePeriod ~ "New to List",
-        !HomelessEventInPeriod ~ "Inactive",
-        HousedBefore == 1 ~ "Return From Housed",
-        IdentificationDate >= csv_files()$default_report_end_date - ddays(input$days_to_inactive) ~ "Return From Inactive",
-        TRUE ~ "Active"
-      )) %>%
-      filter(CurrentStatus %nin% c("Housed", "Inactive")) %>%
-      select(PersonalID, CurrentStatus, IdentificationDate) %>%
-      left_join(client_information(),
-                by = "PersonalID") %>%
-      select(c(PersonalID, InHousingProgram, Sheltered, InCES,
-               CurrentStatus, IdentificationDate,
-               setdiff(colnames(client_information()), "PersonalID")))
+    get_statuses(all_events())
   }) 
   
   recent_enrollments <- reactive({
@@ -459,41 +464,29 @@ function(input, output, session) {
       arrange(PersonalID) 
   })
   
-  output$VBNL_active <- renderValueBox({
-    valueBox(paste(
+  output$VBNL_active <- renderText({
       if(is.null(input$imported)){"---"}
       else{nrow(vet_statuses() %>%
-                  filter(CurrentStatus == "Active"))}, 
-      "Veterans"),  
-      "are actively homeless", icon = icon("campground"),
-      color = "olive")})
+                  filter(CurrentStatus == "Active"))}
+    })
   
-  output$VBNL_newly <- renderValueBox({
-    valueBox(paste(
-      if(is.null(input$imported)){"---"}
-      else{nrow(vet_statuses() %>%
-                  filter(CurrentStatus == "New to List"))}, 
-      "Veterans"),  
-      "are newly homeless", icon = icon("car-side"),
-      color = "olive")})
+  output$VBNL_newly <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(vet_statuses() %>%
+                filter(CurrentStatus == "New to List"))}
+  })
   
-  output$VBNL_return_h <- renderValueBox({
-    valueBox(paste(
-      if(is.null(input$imported)){"---"}
-      else{nrow(vet_statuses() %>%
-                  filter(CurrentStatus == "Return From Housed"))}, 
-      "Veterans"),  
-      "have returned from housing", icon = icon("house-damage"),
-      color = "olive")})
+  output$VBNL_return_h <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(vet_statuses() %>%
+                filter(CurrentStatus == "Return From Housed"))}
+  })
   
-  output$VBNL_return_i <- renderValueBox({
-    valueBox(paste(
-      if(is.null(input$imported)){"---"}
-      else{nrow(vet_statuses() %>%
-                  filter(CurrentStatus == "Return From Inactive"))}, 
-      "Veterans"),  
-      "have returned from inactive", icon = icon("undo"),
-      color = "olive")})
+  output$VBNL_return_i <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(vet_statuses() %>%
+                filter(CurrentStatus == "Return From Inactive"))}
+  })
   
   ##########################
   # PATH report

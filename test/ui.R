@@ -155,7 +155,7 @@ ui <-
         secondary = "#031D40", success = "#30F298", info = "#0785F2",
         warning = "#FFC628", danger = "#414042", base_font = font_google("DM Sans"),
         code_font = font_google("DM Mono"), heading_font = "DM Sans Black",
-        "nav-link-font-size" = "24px",
+        # "nav-link-font-size" = "24px",
         "nav-link-font" = "DM Sans Black",
         `enable-shadows` = TRUE
         , preset = "spacelab"
@@ -191,10 +191,26 @@ ui <-
                   card(htmlOutput("effective_date_v")),
                   layout_column_wrap(
                     width = 1/2, height = 300,
-                    infoBoxOutput("VBNL_active"),
-                    infoBoxOutput("VBNL_newly"),
-                    infoBoxOutput("VBNL_return_h"),
-                    infoBoxOutput("VBNL_return_i"))
+                    value_box(
+                      title = "There are",
+                      value = textOutput("VBNL_active"),
+                      showcase = icon("campground"),
+                      p("actively homeless veterans")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("VBNL_newly"),
+                      showcase = icon("car-side"),
+                      p("newly homeless veterans")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("VBNL_return_h"),
+                      showcase = icon("house-damage"),
+                      p("veterans who have returned from housing")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("VBNL_return_i"),
+                      showcase = icon("undo"),
+                      p("veterans who have returned from inactive")))
                 ),
                 nav_panel(
                   card_title(div(icon("hourglass"), " Chronic BNL"))

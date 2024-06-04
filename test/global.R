@@ -18,7 +18,6 @@ library(bsicons)
 library(shinyjs)
 library(stringr)
 library(janitor)
-library(shiny)
 library(bslib)
 # library(thematic)
 library(DT)
@@ -26,6 +25,7 @@ library(zip)
 # library(archive)
 library(tidyverse)
 library(shinydashboard)
+library(shiny)
 
 options(shiny.maxRequestSize = 30*1024^2)
 
@@ -67,33 +67,6 @@ convert_list_1.8 <- function(column_name) {
 names_for_1.8 <- c("Yes", "No", "Client doesn't know",
                    "Client prefers not to answer", "Data not collected")
 values_for_1.8 <- c(1, 0, 8, 9, 99)
-
-PATH_questions <- c("Q8_16", "Q17", "Q18", "Q19_24", "Q25", "Q26")
-
-# ICF_theme <- bslib::bs_theme(
-#   bg = "#ffffff", fg = "#000000", primary = "#0785F2",
-#   secondary = "#031D40", success = "#30F298", info = "#5BCBF5",
-#   warning = "#FFC628", danger = "#414042", base_font = font_google("DM Sans"),
-#   code_font = font_google("DM Mono"), heading_font = "DM Sans Black",
-#   `enable-shadows` = TRUE
-#   , preset = "spacelab"
-# )
-
-ICF_TitlePanel <- function (title, windowTitle = title, color = "#031D40") {
-  css <- paste(paste0("background-color:", color),
-               "color: white",
-               # "margin-left: 15px",
-               "margin-top: -15px",
-               "margin-left: -30px",
-               "margin-right: -12px",
-               "border-radius: 25px",
-               "padding-top: 17px",
-               "padding-left: 25px",
-               "padding-bottom: 5px",
-               sep = ";")
-  tagList(tags$head(tags$title(windowTitle)), 
-          h1(title, style = css))
-}
 
 ##  variable assignment
 {
