@@ -14,7 +14,7 @@
 library(openxlsx)
 library(lubridate)
 library(bsicons)
-# library(colourpicker)
+library(colourpicker)
 library(shinyjs)
 library(stringr)
 library(janitor)
@@ -80,7 +80,8 @@ values_for_1.8 <- c(1, 0, 8, 9, 99)
                    "210", "300"),
     List = c("P1.2", "R14.2", "W1.2", "V2.2", "W2.2", "V3.3", "P2.2", "4.14",
              "V8.2", "C2.2")) %>%
-    left_join(read.xlsx("https://github.com/HUD-Data-Lab/DataLab/raw/main/CSV%20Specifications%20Machine-Readable_FY2024.xlsx", 
+    # left_join(read.xlsx("https://github.com/HUD-Data-Lab/DataLab/raw/main/CSV%20Specifications%20Machine-Readable_FY2024.xlsx", 
+    left_join(read.xlsx("https://files.hudexchange.info/resources/documents/HMIS-CSV-Machine-Readable-Specifications.xlsx", 
                         sheet = "CSV Lists FY2024"), 
               by = "List") %>%
     mutate(Text = if_else(RecordType == 200, "Bed night", Text),
@@ -95,4 +96,50 @@ values_for_1.8 <- c(1, 0, 8, 9, 99)
     ))
 }
 
+bnl_table <- function(provided_data,
+                      ces_color, shelter_color, housing_color) {
+  DT::datatable(
+    provided_data %>%
+      `colnames<-`( gsub("([a-z])([A-Z])", "\\1 \\2", colnames(provided_data))),
+    options = list(
+      pageLength = 50,
+      columnDefs = list(list(targets = 1:3, visible = FALSE)),
+      initComplete = JS(
+        "function(settings, json) {",
+        "$('th').css({'text-align': 'center'});",
+        "$('td').css({'text-align': 'center'});",
+        "}")),
+    selection = "single",
+    rownames = FALSE) %>%
+    formatStyle("Personal ID", `text-align` = 'center') %>% 
+    formatStyle(
+      'Personal ID', 'In CES',
+      backgroundColor = styleEqual(1, ces_color)) %>% 
+    formatStyle(
+      'Personal ID', 'Sheltered',
+      backgroundColor = styleEqual(1, shelter_color)) %>% 
+    formatStyle(
+      'Personal ID', 'In Housing Program',
+      backgroundColor = styleEqual(1, housing_color))
+}
+
+event_table <- function(provided_data) {
+  DT::datatable(
+    provided_data %>%
+      `colnames<-`(gsub("([a-z])([A-Z])", "\\1 \\2", colnames(provided_data))) %>%
+      select(c("Personal ID", "Effective Date", "Event Type", "Information Source", "before_inactive_date"))
+    ,
+    options = list(
+      pageLength = 5,
+      columnDefs = list(list(targets = 4, visible = FALSE))
+    ),
+    rownames = FALSE) %>%
+    formatStyle(
+      c("Personal ID", "Effective Date", "Event Type", "Information Source"),
+      'before_inactive_date',
+      # target = 'row',
+      # backgroundColor = styleEqual(c(0, 1), c('White', 'WhiteSmoke'))
+      fontWeight = styleEqual(c(0, 1), c('bold', 'normal'))
+    )
+}
 

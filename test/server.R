@@ -133,7 +133,9 @@ function(input, output, session) {
         show_invalid_popup(125)
         # logMetadata("Unsuccessful upload - incomplete dataset")
       } else if(!is_hashed()) {
-        show_invalid_popup(126)
+        ## reset before publishing!!
+        # show_invalid_popup(126)
+        initially_valid_import <- 1
         # logMetadata("Unsuccessful upload - not hashed")
       } 
     }
@@ -1488,6 +1490,283 @@ function(input, output, session) {
       options = list(dom = 't',
                      "pageLength" = -1)
     )
+  })
+  
+  output$veteran_by_name_list <- renderDataTable({
+    if(is.null(input$imported)){return ()}
+    bnl_table(vet_statuses(),
+              input$ces_color, input$shelter_color, input$housing_color)
+  })
+  
+  VBNL_events <- reactive({
+    all_events()[which(vet_statuses()[[input$veteran_by_name_list_rows_selected,1]]==all_events()$PersonalID),]
+  })
+  
+  observeEvent(input$veteran_by_name_list_rows_selected,{
+    showModal(
+      modalDialog(
+        renderDataTable({
+          event_table(VBNL_events())
+        })
+      ))
+  })
+  
+  #########################
+  
+  output$effective_date_c <- renderUI({
+    h4(
+      if(is.null(input$imported)){"No data uploaded"}
+      else{
+        paste(
+          "Effective", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
+        )})
+  })
+  
+  chronic_statuses <- reactive({
+    if(is.null(input$imported)){return ()}
+    client_statuses() %>%
+      inner_join(chronic_folks() %>%
+                   select(PersonalID), by = "PersonalID") %>%
+      mutate(PersonalID = as.integer(PersonalID),
+             IdentificationDate = ymd(IdentificationDate)) %>%
+      arrange(PersonalID)
+  })
+  
+  output$CBNL_active <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(chronic_statuses() %>%
+                filter(CurrentStatus == "Active"))}
+  })
+  
+  output$CBNL_newly <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(chronic_statuses() %>%
+                filter(CurrentStatus == "New to List"))}
+  })
+  
+  output$CBNL_return_h <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(chronic_statuses() %>%
+                filter(CurrentStatus == "Return From Housed"))}
+  })
+  
+  output$CBNL_return_i <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(chronic_statuses() %>%
+                filter(CurrentStatus == "Return From Inactive"))}
+  })
+    
+  output$chronic_by_name_list <- renderDataTable({
+    if(is.null(input$imported)){return ()}
+    bnl_table(chronic_statuses(),
+              input$ces_color, input$shelter_color, input$housing_color)
+  })
+  
+  CBNL_events <- reactive({
+    all_events()[which(chronic_statuses()[[input$chronic_by_name_list_rows_selected,1]]==all_events()$PersonalID),]
+  })
+  
+  observeEvent(input$chronic_by_name_list_rows_selected,{
+    showModal(
+      modalDialog(
+        renderDataTable({
+          event_table(CBNL_events())
+        })
+      ))
+  })
+  
+  #########################
+  
+  output$effective_date_y <- renderUI({
+    h4(
+      if(is.null(input$imported)){"No data uploaded"}
+      else{
+        paste(
+          "Effective", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
+        )})
+  })
+  
+  youth_statuses <- reactive({
+    if(is.null(input$imported)){return ()}
+    client_statuses() %>%
+      inner_join(youth() %>%
+                   select(PersonalID), by = "PersonalID") %>%
+      mutate(PersonalID = as.integer(PersonalID),
+             IdentificationDate = ymd(IdentificationDate)) %>%
+      arrange(PersonalID)
+  })
+  
+  output$YBNL_active <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(youth_statuses() %>%
+                filter(CurrentStatus == "Active"))}
+  })
+  
+  output$YBNL_newly <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(youth_statuses() %>%
+                filter(CurrentStatus == "New to List"))}
+  })
+  
+  output$YBNL_return_h <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(youth_statuses() %>%
+                filter(CurrentStatus == "Return From Housed"))}
+  })
+  
+  output$YBNL_return_i <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(youth_statuses() %>%
+                filter(CurrentStatus == "Return From Inactive"))}
+  })
+  
+  output$youth_by_name_list <- renderDataTable({
+    if(is.null(input$imported)){return ()}
+    bnl_table(youth_statuses(),
+              input$ces_color, input$shelter_color, input$housing_color)
+  })
+  
+  YBNL_events <- reactive({
+    all_events()[which(youth_statuses()[[input$youth_by_name_list_rows_selected,1]]==all_events()$PersonalID),]
+  })
+  
+  observeEvent(input$youth_by_name_list_rows_selected,{
+    showModal(
+      modalDialog(
+        renderDataTable({
+          event_table(YBNL_events())
+        })
+      ))
+  })
+  
+  #########################
+  
+  output$effective_date_f <- renderUI({
+    h4(
+      if(is.null(input$imported)){"No data uploaded"}
+      else{
+        paste(
+          "Effective", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
+        )})
+  })
+  
+  family_statuses <- reactive({
+    if(is.null(input$imported)){return ()}
+    client_statuses() %>%
+      inner_join(families() %>%
+                   select(PersonalID, NumberOfChildren, HouseholdSize), 
+                 by = "PersonalID") %>%
+      mutate(PersonalID = as.integer(PersonalID),
+             IdentificationDate = ymd(IdentificationDate)) %>%
+      arrange(PersonalID)
+  })
+  
+  output$FBNL_active <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(family_statuses() %>%
+                filter(CurrentStatus == "Active"))}
+  })
+  
+  output$FBNL_newly <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(family_statuses() %>%
+                filter(CurrentStatus == "New to List"))}
+  })
+  
+  output$FBNL_return_h <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(family_statuses() %>%
+                filter(CurrentStatus == "Return From Housed"))}
+  })
+  
+  output$FBNL_return_i <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(family_statuses() %>%
+                filter(CurrentStatus == "Return From Inactive"))}
+  })
+  
+  output$family_by_name_list <- renderDataTable({
+    if(is.null(input$imported)){return ()}
+    bnl_table(family_statuses(),
+              input$ces_color, input$shelter_color, input$housing_color)
+  })
+  
+  FBNL_events <- reactive({
+    all_events()[which(family_statuses()[[input$family_by_name_list_rows_selected,1]]==all_events()$PersonalID),]
+  })
+  
+  observeEvent(input$family_by_name_list_rows_selected,{
+    showModal(
+      modalDialog(
+        renderDataTable({
+          event_table(FBNL_events())
+        })
+      ))
+  })
+  
+  #########################
+  
+  output$effective_date_a <- renderUI({
+    h4(
+      if(is.null(input$imported)){"No data uploaded"}
+      else{
+        paste(
+          "Effective", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
+        )})
+  })
+  
+  all_statuses <- reactive({
+    if(is.null(input$imported)){return ()}
+    client_statuses() %>%
+      inner_join(csv_files()$Client %>%
+                   filter(DOB <= csv_files()$default_report_end_date - years(18)) %>%
+                   select(PersonalID), by = "PersonalID") %>%
+      mutate(PersonalID = as.integer(PersonalID),
+             IdentificationDate = ymd(IdentificationDate)) %>%
+      arrange(PersonalID)
+  })
+  
+  output$BNL_active <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(all_statuses() %>%
+                filter(CurrentStatus == "Active"))}
+  })
+  
+  output$BNL_newly <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(all_statuses() %>%
+                filter(CurrentStatus == "New to List"))}
+  })
+  
+  output$BNL_return_h <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(all_statuses() %>%
+                filter(CurrentStatus == "Return From Housed"))}
+  })
+  
+  output$BNL_return_i <- renderText({
+    if(is.null(input$imported)){"---"}
+    else{nrow(all_statuses() %>%
+                filter(CurrentStatus == "Return From Inactive"))}
+  })
+  
+  output$by_name_list <- renderDataTable({
+    if(is.null(input$imported)){return ()}
+    bnl_table(all_statuses(),
+              input$ces_color, input$shelter_color, input$housing_color)
+  })
+  
+  BNL_events <- reactive({
+    all_events()[which(all_statuses()[[input$by_name_list_rows_selected,1]]==all_events()$PersonalID),]
+  })
+  
+  observeEvent(input$by_name_list_rows_selected,{
+    showModal(
+      modalDialog(
+        renderDataTable({
+          event_table(BNL_events())
+        })
+      ))
   })
   
 }

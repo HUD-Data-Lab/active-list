@@ -107,7 +107,7 @@ import_text <- card(card_header(
               </p>
               <p>Generate a hashed HMIS CSV Export from your local HMIS and store
               it in a secure location that you can easily find again. It must be
-              a .zip file with 23 csv files in it.
+              a .zip file with 24 csv files in it.
               <ul>
               <li>A hashed export means that the personal identifiers are obscured
               when the export is generated.</li>
@@ -135,12 +135,12 @@ settings_row_one <- layout_columns(
   card(card_header("Open Enrollments to Include")
   )
   ,
-  # card(title = "Color Controls",
-  #     colourInput("housing_color", "In Housing Program", "LightBlue"),
-  #     colourInput("shelter_color", "Sheltered", "Thistle"),
-  #     colourInput("ces_color", "In Coordinated Entry", "MistyRose"),
-  #     status = "primary", width = 4, solidHeader = TRUE
-  # )
+  card(title = "Color Controls",
+       colourpicker::colourInput("housing_color", "In Housing Program", "LightBlue"),
+       colourpicker::colourInput("shelter_color", "Sheltered", "Thistle"),
+       colourpicker::colourInput("ces_color", "In Coordinated Entry", "MistyRose"),
+       status = "primary", width = 4, solidHeader = TRUE
+  )
 )
 
 
@@ -210,20 +210,127 @@ ui <-
                       title = "There are",
                       value = textOutput("VBNL_return_i"),
                       showcase = icon("undo"),
-                      p("veterans who have returned from inactive")))
+                      p("veterans who have returned from inactive"))),
+                  card(
+                    DT::dataTableOutput("veteran_by_name_list")
+                  )
                 ),
                 nav_panel(
-                  card_title(div(icon("hourglass"), " Chronic BNL"))
+                  card_title(div(icon("hourglass"), " Chronic BNL")),
+                  card(htmlOutput("effective_date_c")),
+                  layout_column_wrap(
+                    width = 1/2, height = 300,
+                    value_box(
+                      title = "There are",
+                      value = textOutput("CBNL_active"),
+                      showcase = icon("campground"),
+                      p("actively chronically homeless people")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("CBNL_newly"),
+                      showcase = icon("car-side"),
+                      p("people new to the chronic list")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("CBNL_return_h"),
+                      showcase = icon("house-damage"),
+                      p("chronically homeless folks who have returned from housing")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("CBNL_return_i"),
+                      showcase = icon("undo"),
+                      p("chronically homeless folks who have returned from inactive"))),
+                  card(
+                    DT::dataTableOutput("chronic_by_name_list")
+                  )
                 ),
                 nav_panel(
-                  card_title(div(icon("user"), " Youth BNL"))
+                  card_title(div(icon("user"), " Youth BNL")),
+                  card(htmlOutput("effective_date_y")),
+                  layout_column_wrap(
+                    width = 1/2, height = 300,
+                    value_box(
+                      title = "There are",
+                      value = textOutput("YBNL_active"),
+                      showcase = icon("campground"),
+                      p("actively homeless youth")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("YBNL_newly"),
+                      showcase = icon("car-side"),
+                      p("newly homeless youth")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("YBNL_return_h"),
+                      showcase = icon("house-damage"),
+                      p("youth who have returned from housing")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("YBNL_return_i"),
+                      showcase = icon("undo"),
+                      p("youth who have returned from inactive"))),
+                  card(
+                    DT::dataTableOutput("youth_by_name_list")
+                  )
                 ),
                 nav_panel(
-                  card_title(div(icon("child"), " Family BNL"))
+                  card_title(div(icon("child"), " Family BNL")),
+                  card(htmlOutput("effective_date_y")),
+                  layout_column_wrap(
+                    width = 1/2, height = 300,
+                    value_box(
+                      title = "There are",
+                      value = textOutput("FBNL_active"),
+                      showcase = icon("campground"),
+                      p("actively homeless families")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("FBNL_newly"),
+                      showcase = icon("car-side"),
+                      p("newly homeless families")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("FBNL_return_h"),
+                      showcase = icon("house-damage"),
+                      p("families who have returned from housing")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("FBNL_return_i"),
+                      showcase = icon("undo"),
+                      p("families who have returned from inactive"))),
+                  card(
+                    DT::dataTableOutput("family_by_name_list")
+                  )
                 ),
                 nav_panel(
                   # card_title(div(icon("bar-chart", style = "color:blue;"), " Full BNL"))
-                  card_title(div(icon("users"), " Full BNL"))
+                  card_title(div(icon("users"), " Full BNL")),
+                  card(htmlOutput("effective_date_a")),
+                  layout_column_wrap(
+                    width = 1/2, height = 300,
+                    value_box(
+                      title = "There are",
+                      value = textOutput("BNL_active"),
+                      showcase = icon("campground"),
+                      p("actively homeless adults")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("BNL_newly"),
+                      showcase = icon("car-side"),
+                      p("newly homeless adults")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("BNL_return_h"),
+                      showcase = icon("house-damage"),
+                      p("adults who have returned from housing")),
+                    value_box(
+                      title = "There are",
+                      value = textOutput("BNL_return_i"),
+                      showcase = icon("undo"),
+                      p("adults who have returned from inactive"))),
+                  card(
+                    DT::dataTableOutput("by_name_list")
+                  )
                 )
               )
     ),
