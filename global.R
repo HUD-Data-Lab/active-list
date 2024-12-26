@@ -1,4 +1,4 @@
-# Copyright (C) 2022 Gwen Beebe
+# Copyright (C) 2023 ICF
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -11,20 +11,23 @@
 # GNU Affero General Public License for more details at
 # <https://www.gnu.org/licenses/>. 
 
-
-library(shiny)
-library(shinydashboard)
-library(shinyWidgets)
-# library(dashboardthemes)
-library(bslib)
-library(tidyverse)
+library(openxlsx)
 library(lubridate)
-library(DT)
-library(shinydashboardPlus)
+library(bsicons)
 library(colourpicker)
+library(shinyjs)
+library(stringr)
+library(janitor)
+library(bslib)
+# library(thematic)
+library(DT)
+library(zip)
+# library(archive)
+library(tidyverse)
+library(shinydashboard)
+library(shiny)
 
 options(shiny.maxRequestSize = 30*1024^2)
-`%nin%` = Negate(`%in%`)
 
 source("https://raw.githubusercontent.com/HUD-Data-Lab/DataLab/main/datalab_functions.R")
 source("https://raw.githubusercontent.com/HUD-Data-Lab/DataLab/main/DataLab_Lists.R")
@@ -65,25 +68,78 @@ names_for_1.8 <- c("Yes", "No", "Client doesn't know",
                    "Client prefers not to answer", "Data not collected")
 values_for_1.8 <- c(1, 0, 8, 9, 99)
 
-hud_service_data <- 
-  # read.csv("https://raw.githubusercontent.com/gwenbeebe/CHIP_HMIS/main/Publishing/NHSDC_ByNameList/SupplementalData_ServiceGroups.csv") %>%
-  # left_join(read.csv("https://raw.githubusercontent.com/gwenbeebe/CHIP_HMIS/main/Publishing/NHSDC_ByNameList/SupplementalData_Services.csv"), 
-  read.csv("C:/Users/57695/OneDrive - ICF/ICF Homeless Services Team/HCC/Code/active-list/SupplementalData_ServiceGroups.csv") %>%
-  left_join(read.csv("C:/Users/57695/OneDrive - ICF/ICF Homeless Services Team/HCC/Code/active-list/SupplementalData_Services.csv"),
-            by = "RecordType") %>%
-  dplyr::mutate(ServiceType = case_when(
-    str_detect(Description, fixed("outreach", ignore_case=TRUE)) |
-      Description == "Bed night" ~ "Homeless",
-    str_detect(Description, fixed("rental", ignore_case=TRUE)) |
-      str_detect(Description, fixed("eviction prevention", ignore_case=TRUE)) |
-      str_detect(Description, fixed("security deposit", ignore_case=TRUE))~ "Housed"
-  ))
-
 ##  variable assignment
 {
   homeless_situations <- c(1, 2, 16, 18)
   housed_situations <- c(3, 10, 11, 14, 19, 20, 21, 22, 23, 26, 28, 29, 31, 32, 33, 34, 35, 36)
-  homeless_program_types <- c(1, 2, 4, 8)
+  homeless_program_types <- c(0, 1, 2, 4, 8)
   housing_program_types <- c(3, 9, 10, 55, 13)
   file_count <- 9 
-  }
+  service_list <- data.frame(
+    RecordType = c("141", "142", "143", "144", "151", "152", "161", "200", 
+                   "210", "300"),
+    List = c("P1.2", "R14.2", "W1.2", "V2.2", "W2.2", "V3.3", "P2.2", "4.14",
+             "V8.2", "C2.2")) %>%
+    # left_join(read.xlsx("https://github.com/HUD-Data-Lab/DataLab/raw/main/CSV%20Specifications%20Machine-Readable_FY2024.xlsx", 
+    left_join(read.xlsx("https://files.hudexchange.info/resources/documents/HMIS-CSV-Machine-Readable-Specifications.xlsx", 
+                        sheet = "CSV Lists FY2024"), 
+              by = "List") %>%
+    mutate(Text = if_else(RecordType == 200, "Bed night", Text),
+           Value = if_else(RecordType == 200, RecordType, Value)) %>%
+    rename(TypeProvided = Value) %>%
+    dplyr::mutate(ServiceType = case_when(
+      str_detect(Text, fixed("outreach", ignore_case=TRUE)) |
+        Text == "Bed night" ~ "Homeless",
+      str_detect(Text, fixed("rental", ignore_case=TRUE)) |
+        str_detect(Text, fixed("eviction prevention", ignore_case=TRUE)) |
+        str_detect(Text, fixed("security deposit", ignore_case=TRUE))~ "Housed"
+    ))
+}
+
+bnl_table <- function(provided_data,
+                      ces_color, shelter_color, housing_color) {
+  DT::datatable(
+    provided_data %>%
+      `colnames<-`( gsub("([a-z])([A-Z])", "\\1 \\2", colnames(provided_data))),
+    options = list(
+      pageLength = 50,
+      columnDefs = list(list(targets = 1:3, visible = FALSE)),
+      initComplete = JS(
+        "function(settings, json) {",
+        "$('th').css({'text-align': 'center'});",
+        "$('td').css({'text-align': 'center'});",
+        "}")),
+    selection = "single",
+    rownames = FALSE) %>%
+    formatStyle("Personal ID", `text-align` = 'center') %>% 
+    formatStyle(
+      'Personal ID', 'In CES',
+      backgroundColor = styleEqual(1, ces_color)) %>% 
+    formatStyle(
+      'Personal ID', 'Sheltered',
+      backgroundColor = styleEqual(1, shelter_color)) %>% 
+    formatStyle(
+      'Personal ID', 'In Housing Program',
+      backgroundColor = styleEqual(1, housing_color))
+}
+
+event_table <- function(provided_data) {
+  DT::datatable(
+    provided_data %>%
+      `colnames<-`(gsub("([a-z])([A-Z])", "\\1 \\2", colnames(provided_data))) %>%
+      select(c("Personal ID", "Effective Date", "Event Type", "Information Source", "before_inactive_date"))
+    ,
+    options = list(
+      pageLength = 5,
+      columnDefs = list(list(targets = 4, visible = FALSE))
+    ),
+    rownames = FALSE) %>%
+    formatStyle(
+      c("Personal ID", "Effective Date", "Event Type", "Information Source"),
+      'before_inactive_date',
+      # target = 'row',
+      # backgroundColor = styleEqual(c(0, 1), c('White', 'WhiteSmoke'))
+      fontWeight = styleEqual(c(0, 1), c('bold', 'normal'))
+    )
+}
+
