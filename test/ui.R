@@ -171,10 +171,7 @@ ui <-
                 nav_panel(
                   card_title("Import HUD CSV"),
                   import_text,
-                  import_button,
-                  card(
-                    DT::dataTableOutput("debug_table")
-                  )
+                  import_button
                 ),
                 nav_panel(
                   card_title("Optional Settings"),
@@ -278,7 +275,7 @@ ui <-
                 ),
                 nav_panel(
                   card_title(div(icon("child"), " Family BNL")),
-                  card(htmlOutput("effective_date_y")),
+                  card(htmlOutput("effective_date_f")),
                   layout_column_wrap(
                     width = 1/2, height = 300,
                     value_box(
