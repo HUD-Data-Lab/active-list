@@ -181,6 +181,16 @@ function(input, output, session) {
   })
   ##########################
   
+  output$report_date_picker <- renderUI({
+    if(is.null(input$imported)){return ()}
+    dateInput("report_date_picker",
+              "Effective Date",
+              value = csv_files()$default_report_end_date,
+              min = csv_files()$default_report_start_date + ddays(input$days_to_inactive),
+              max = csv_files()$default_report_end_date
+              )
+  })
+  
   joined_enrollments <- reactive({
     if(is.null(input$imported)){return ()}
     
@@ -399,17 +409,30 @@ function(input, output, session) {
     id <- notify("Finding youth...")
     on.exit(removeNotification(id), add = TRUE)
     
+    reunified <- recent_enrollments() %>%
+      filter(EntryDate >= csv_files()$default_report_end_date - ddays(input$days_to_inactive)) %>%
+      group_by(PersonalID) %>%
+      slice(1L) %>%
+      ungroup() %>%
+      filter(RelationshipToHoH == 2)
+    
     recent_enrollments() %>%
       inner_join(csv_files()$Client %>%
-                   filter(DOB <= csv_files()$default_report_end_date - years(18) &
-                            DOB > csv_files()$default_report_end_date - years(25)) %>%
-                   select(PersonalID), by = "PersonalID") %>%
-      filter(RelationshipToHoH %in% c(1, 3)) %>%
-      dplyr::mutate(YouthFlag = 1) %>%
-      select(PersonalID, YouthFlag) %>%
+                   mutate(Age = trunc((DOB %--% csv_files()$default_report_end_date) / years(1))) %>%
+                   # filter(DOB <= csv_files()$default_report_end_date - years(12) &
+                   #          DOB > csv_files()$default_report_end_date - years(25)) %>%
+                   filter(Age >= 12 & Age < 25), 
+                 by = "PersonalID") %>%
+      filter(RelationshipToHoH %in% c(1, 3) 
+             & PersonalID %nin% reunified$PersonalID) %>%
+      # dplyr::mutate(YouthFlag = 1) %>%
+      # select(PersonalID, YouthFlag) %>%
+      select(PersonalID, Age) %>%
       group_by(PersonalID) %>%
       slice(1L) %>%
       ungroup()
+    
+
   })
   
   family_sizes <- reactive({
@@ -450,8 +473,8 @@ function(input, output, session) {
     h4(
       if(is.null(input$imported)){"No data uploaded"}
       else{
-        paste(
-          "Effective", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
+        paste0(
+          "Effective ", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
         )})
   })
   
@@ -1517,8 +1540,8 @@ function(input, output, session) {
     h4(
       if(is.null(input$imported)){"No data uploaded"}
       else{
-        paste(
-          "Effective", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
+        paste0(
+          "Effective ", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
         )})
   })
   
@@ -1581,16 +1604,16 @@ function(input, output, session) {
     h4(
       if(is.null(input$imported)){"No data uploaded"}
       else{
-        paste(
-          "Effective", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
+        paste0(
+          "Effective ", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
         )})
   })
   
   youth_statuses <- reactive({
     if(is.null(input$imported)){return ()}
     client_statuses() %>%
-      inner_join(youth() %>%
-                   select(PersonalID), by = "PersonalID") %>%
+      inner_join(youth(), 
+                 by = "PersonalID") %>%
       mutate(PersonalID = as.integer(PersonalID),
              IdentificationDate = ymd(IdentificationDate)) %>%
       arrange(PersonalID)
@@ -1645,8 +1668,8 @@ function(input, output, session) {
     h4(
       if(is.null(input$imported)){"No data uploaded"}
       else{
-        paste(
-          "Effective", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
+        paste0(
+          "Effective ", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
         )})
   })
   
@@ -1710,8 +1733,8 @@ function(input, output, session) {
     h4(
       if(is.null(input$imported)){"No data uploaded"}
       else{
-        paste(
-          "Effective", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
+        paste0(
+          "Effective ", format(csv_files()$default_report_end_date, "%m-%d-%Y"), " (", input$days_to_inactive, " days to inactive)"
         )})
   })
   

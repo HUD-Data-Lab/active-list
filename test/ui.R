@@ -115,10 +115,11 @@ import_text <- card(card_header(
               stored in a secure location per HUD, state, and local rules and
               regulations.</li>
               <li>If you are unsure how to generate your hashed HMIS CSV Export,
-              please contact your vendor.</li>
+              please contact your HMIS administrator (or your vendor, if you are 
+              the administrator).</li>
               </ul>
               Once you have exported the correct file from your HMIS, you are
-              ready to generate a PATH report. Begin by uploading your zip file below."))
+              ready to generate your active lists. Begin by uploading your zip file below."))
 
 import_button <- card(
   fileInput("imported",
@@ -132,6 +133,8 @@ settings_row_one <- layout_columns(
   card(card_header("Days to Inactive"),
        numericInput("days_to_inactive", "", 90)
   ),
+  card(card_header("Effective Date"),
+       uiOutput("report_date_picker")),
   card(card_header("Open Enrollments to Include")
   )
   ,
