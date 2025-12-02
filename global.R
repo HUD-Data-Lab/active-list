@@ -81,8 +81,9 @@ values_for_1.8 <- c(1, 0, 8, 9, 99)
     List = c("P1.2", "R14.2", "W1.2", "V2.2", "W2.2", "V3.3", "P2.2", "4.14",
              "V8.2", "C2.2")) %>%
     # left_join(read.xlsx("https://github.com/HUD-Data-Lab/DataLab/raw/main/CSV%20Specifications%20Machine-Readable_FY2024.xlsx", 
-    left_join(read.xlsx("https://files.hudexchange.info/resources/documents/HMIS-CSV-Machine-Readable-Specifications.xlsx", 
-                        sheet = "CSV Lists FY2024"), 
+    # left_join(read.xlsx("https://files.hudexchange.info/resources/documents/HMIS-CSV-Machine-Readable-Specifications.xlsx", 
+    left_join(read.xlsx("github.com/HUD-Data-Lab/DataLab/raw/main/Machine Readable Documentation/DRAFT - CSV Specifications Machine-Readable_FY2026.xlsx", 
+                        sheet = "CSV Lists"), 
               by = "List") %>%
     mutate(Text = if_else(RecordType == 200, "Bed night", Text),
            Value = if_else(RecordType == 200, RecordType, Value)) %>%

@@ -115,7 +115,7 @@ function(input, output, session) {
       } else if("Export" %in% missing_files) {
         show_invalid_popup(123)
         # logMetadata("Unsuccessful upload - not an HMIS CSV Export")
-      } else if(!isFY2024Export()) {
+      } else if(!isFY2026Export()) {
         show_invalid_popup(124)
         # logMetadata("Unsuccessful upload - out of date HMIS CSV Export")
       } else if(length(missing_files)) {
@@ -166,12 +166,12 @@ function(input, output, session) {
          Enrollment = Enrollment,
          Event = Event,
          Exit = Exit,
-         Funder = Funder,
+         # Funder = Funder,
          Organization = Organization,
          Project = Project,
          Services = Services,
-         IncomeBenefits = IncomeBenefits,
-         Disabilities = Disabilities,
+         # IncomeBenefits = IncomeBenefits,
+         # Disabilities = Disabilities,
          HealthAndDV = HealthAndDV,
          default_report_start_date = default_report_start_date,
          default_report_end_date = default_report_end_date)
@@ -332,21 +332,24 @@ function(input, output, session) {
     if(is.null(input$imported)){return ()}
     
     joined_enrollments() %>%
+      dplyr::mutate(
+        Destination = floor(Destination / 100)) %>%
       filter(
         (is.na(ExitDate) &
            ProjectType %in% c(1, 2, 8, housing_program_types)) |
           Destination %in% c(1, 4)) %>%
-      dplyr::mutate(EffectiveDate = if_else(is.na(ExitDate), effective_date(), ExitDate),
-                    ClientStatus = case_when(
-                      Destination == 4 |
-                        (ProjectType %in% housing_program_types &
-                           is.na(ExitDate) &
-                           MoveInDate <= effective_date()) ~ "Housed",
-                      TRUE ~ "Homeless"),
-                    EventType = case_when(
-                      Destination == 1 ~ "Homeless Exit From Program",
-                      Destination == 4 ~ "Housed Exit From Program",
-                      TRUE ~ "Still Enrolled In Program")) %>%
+      dplyr::mutate(
+        EffectiveDate = if_else(is.na(ExitDate), effective_date(), ExitDate),
+        ClientStatus = case_when(
+          Destination == 4 |
+            (ProjectType %in% housing_program_types &
+               is.na(ExitDate) &
+               MoveInDate <= effective_date()) ~ "Housed",
+          TRUE ~ "Homeless"),
+        EventType = case_when(
+          Destination == 1 ~ "Homeless Exit From Program",
+          Destination == 4 ~ "Housed Exit From Program",
+          TRUE ~ "Still Enrolled In Program")) %>%
       rename(InformationSource = ProjectName) %>%
       select(PersonalID, EffectiveDate, ClientStatus, EventType, InformationSource)
   })
